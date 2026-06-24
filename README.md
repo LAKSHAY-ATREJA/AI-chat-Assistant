@@ -6,6 +6,7 @@ persistent conversation memory, five purpose-built personas, and structured erro
 handling. The same LangChain pipeline is also exposed as a standalone command-line
 demo that can be used to verify the setup without a browser.
 
+Live URL : https://ai-chat-assistant-elyt2rzcwcddgypk6zfslh.streamlit.app
 
 ## What it does
 
