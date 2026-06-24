@@ -2,10 +2,24 @@ import os
 import streamlit as st
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
-from langchain.memory import ConversationBufferWindowMemory
-from langchain.chains import ConversationChain
-from langchain.prompts import PromptTemplate
+from langchain_community.memory import ConversationBufferWindowMemory
+from langchain_core.prompts import PromptTemplate
+from langchain_core.output_parsers import StrOutputParser
 from datetime import datetime
+
+
+class ConversationChain:
+    """LCEL-based drop-in for the deprecated langchain.chains.ConversationChain."""
+
+    def __init__(self, llm, memory, prompt, **_):
+        self._memory = memory
+        self._runnable = prompt | llm | StrOutputParser()
+
+    def predict(self, input: str) -> str:
+        history = self._memory.load_memory_variables({}).get("history", "")
+        response = self._runnable.invoke({"history": history, "input": input})
+        self._memory.save_context({"input": input}, {"output": response})
+        return response
 
 load_dotenv()
 
@@ -102,7 +116,7 @@ Assistant:"""
         template=prompt_template
     )
 
-    return ConversationChain(llm=llm, memory=memory, prompt=prompt, verbose=False)
+    return ConversationChain(llm=llm, memory=memory, prompt=prompt)
 
 
 def get_or_create_conversation(api_key: str, persona_name: str) -> ConversationChain:
