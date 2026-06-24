@@ -78,7 +78,7 @@ def validate_api_key(api_key: str) -> bool:
 def create_conversation(api_key: str, persona_prompt: str) -> ConversationChain:
     """Create a LangChain ConversationChain backed by Groq Llama3."""
     llm = ChatGroq(
-        model_name="llama3-8b-8192",
+        model_name="llama-3.1-8b-instant",
         temperature=0.7,
         max_tokens=1024,
         groq_api_key=api_key.strip()
