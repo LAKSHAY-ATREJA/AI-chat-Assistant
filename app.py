@@ -71,10 +71,6 @@ def _init_session_state():
 _init_session_state()
 
 
-def validate_api_key(api_key: str) -> bool:
-    return bool(api_key) and api_key.strip().startswith("gsk_")
-
-
 def get_or_create_llm(api_key: str) -> ChatGroq:
     if st.session_state._llm is None or st.session_state._last_api_key != api_key:
         st.session_state._llm = ChatGroq(
@@ -113,23 +109,13 @@ def build_export_text(messages: list) -> str:
     return "\n".join(lines)
 
 
+api_key = os.environ.get("GROQ_API_KEY", "")
+if not api_key:
+    st.error("API key not configured.")
+    st.stop()
+
 # ── Sidebar ───────────────────────────────────────────────────
 with st.sidebar:
-    st.header("Configuration")
-
-    _env_key = os.getenv("GROQ_API_KEY", "")
-    api_key = st.text_input(
-        "Groq API Key",
-        value=_env_key,
-        type="password",
-        placeholder="gsk_...",
-        help="Get a free key at console.groq.com. Can also be set via the GROQ_API_KEY environment variable.",
-    )
-
-    if api_key and not validate_api_key(api_key):
-        st.warning("Key format looks unexpected — Groq keys usually start with 'gsk_'.")
-
-    st.divider()
     st.header("Select Persona")
 
     for persona_name in PERSONAS:
@@ -176,14 +162,6 @@ with st.sidebar:
 # ── Main area ─────────────────────────────────────────────────
 st.markdown('<p class="main-header">AI Chat Assistant</p>', unsafe_allow_html=True)
 st.markdown("Intelligent conversation with memory — remembers the last 10 messages.")
-
-if not api_key:
-    st.info("Enter your Groq API key in the sidebar to start chatting.")
-    st.markdown(
-        "You can get a free API key at [console.groq.com](https://console.groq.com). "
-        "No credit card is required."
-    )
-    st.stop()
 
 # Active persona label
 st.info(f"Active Persona: {st.session_state.current_persona} — "
