@@ -1,0 +1,41 @@
+name: AI Chat Assistant checks
+
+on:
+  push:
+    paths:
+      - 'app.py'
+      - 'demo.py'
+      - 'requirements.txt'
+      - '.github/workflows/ci.yml'
+  pull_request:
+    paths:
+      - 'app.py'
+      - 'demo.py'
+      - 'requirements.txt'
+      - '.github/workflows/ci.yml'
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    env:
+      GROQ_API_KEY: gsk_dummy_ci_key_not_used
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install requirements
+        run: python -m pip install -r requirements.txt
+      - name: Python syntax check
+        run: python -m py_compile app.py demo.py
+      - name: Streamlit startup smoke test
+        run: |
+          python - <<'PY'
+          from streamlit.testing.v1 import AppTest
+          app = AppTest.from_file("app.py", default_timeout=90).run()
+          if app.exception:
+              for exc in app.exception:
+                  print(exc.message)
+              raise RuntimeError("Streamlit app failed on startup")
+          print("Streamlit chat interface rendered without errors")
+          PY
