@@ -51,6 +51,7 @@ PERSONAS = {
 }
 
 DEFAULT_PERSONA = "General Assistant"
+MODEL_NAME = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b").strip() or "openai/gpt-oss-20b"
 
 # How many recent messages to include as LLM context (5 user + 5 assistant turns)
 CONTEXT_WINDOW = 10
@@ -62,6 +63,7 @@ def _init_session_state():
         "total_messages": 0,
         "current_persona": DEFAULT_PERSONA,
         "_last_api_key": "",
+        "_last_model": "",
         "_llm": None,
     }
     for key, value in defaults.items():
@@ -72,14 +74,16 @@ _init_session_state()
 
 
 def get_or_create_llm(api_key: str) -> ChatGroq:
-    if st.session_state._llm is None or st.session_state._last_api_key != api_key:
+    if (st.session_state._llm is None or st.session_state._last_api_key != api_key
+            or st.session_state._last_model != MODEL_NAME):
         st.session_state._llm = ChatGroq(
-            model_name="llama-3.1-8b-instant",
+            model_name=MODEL_NAME,
             temperature=0.7,
             max_tokens=1024,
             groq_api_key=api_key.strip(),
         )
         st.session_state._last_api_key = api_key
+        st.session_state._last_model = MODEL_NAME
     return st.session_state._llm
 
 
@@ -194,6 +198,7 @@ if user_input:
         st.caption(timestamp)
 
     response = ""
+    failed = False
     reply_ts = datetime.now().strftime("%H:%M")
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
@@ -202,24 +207,29 @@ if user_input:
                 if not response or not response.strip():
                     response = "I didn't receive a response. Please try again."
             except Exception as exc:
+                failed = True
                 error_msg = str(exc)
                 if "401" in error_msg or "invalid_api_key" in error_msg.lower():
                     response = "Authentication failed. Please check that your Groq API key is correct."
                 elif "429" in error_msg or "rate_limit" in error_msg.lower():
                     response = "Rate limit reached. Please wait a moment before sending another message."
+                elif "model_not_found" in error_msg.lower() or "does not exist" in error_msg.lower():
+                    response = "The configured AI model is unavailable. Please update GROQ_MODEL to a supported Groq model and retry."
                 elif "503" in error_msg or "unavailable" in error_msg.lower():
                     response = "The AI service is temporarily unavailable. Please try again shortly."
                 else:
-                    response = f"An error occurred: {error_msg}"
+                    response = "The AI service could not complete the request. Please retry."
                 st.error(response)
 
         reply_ts = datetime.now().strftime("%H:%M")
-        st.write(response)
-        st.caption(reply_ts)
+        if not failed:
+            st.write(response)
+            st.caption(reply_ts)
 
-    st.session_state.messages.append({
+    if not failed:
+        st.session_state.messages.append({
         "role": "assistant",
         "content": response,
         "timestamp": reply_ts,
-    })
+        })
     st.session_state.total_messages += 1
