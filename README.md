@@ -10,12 +10,9 @@ demo that can be used to verify the setup without a browser. **[Launch Live Demo
 
 ## What it does
 
-Each user message is sent through a LangChain ConversationChain that maintains a
-rolling window of the last 15 exchanges. The chain inserts those exchanges into the
-prompt so the model can answer follow-up questions accurately within a single
-session. Switching persona clears the history and creates a new chain; the previous
-chains are cached in Streamlit session state so they can be resumed if you switch
-back.
+Each user message is sent to a Groq-hosted model through LangChain Core with
+the selected persona's system prompt and up to 10 recent chat messages.
+Switching persona or clearing the chat resets the conversation context.
 
 Five personas ship out of the box:
 
@@ -32,18 +29,17 @@ plain-text file at any point.
 ## Architecture
 
 ```
-User Input
-    -> ConversationChain (LangChain)
-        -> Persona-specific PromptTemplate
-        -> ConversationBufferWindowMemory  (window = 15 turns)
-        -> Groq API  (Llama3-8b-8192)
+User input
+    -> Persona system prompt + last 10 chat messages
+    -> LangChain Core / ChatGroq (openai/gpt-oss-20b by default)
+    -> Groq API
     -> Response displayed in Streamlit chat UI
-    -> Memory updated for next turn
+    -> Successful response added to session history
 ```
 
-Each persona owns a separate ConversationChain instance stored in Streamlit session
-state. Clearing the chat or switching persona discards that chain so memory starts
-completely fresh.
+The conversation history is held in Streamlit session state. Clearing the chat
+or switching persona starts with empty message history. Failed API requests are
+not recorded as assistant replies.
 
 
 ## Tech stack
@@ -52,9 +48,9 @@ completely fresh.
 |---|---|
 | UI | Streamlit |
 | LLM provider | Groq (hosted inference) |
-| Model | Llama3-8b-8192 |
-| Orchestration | LangChain ConversationChain |
-| Memory | LangChain ConversationBufferWindowMemory |
+| Model | GPT-OSS 20B on Groq (configurable via GROQ_MODEL) |
+| Orchestration | LangChain Core / ChatGroq |
+| Memory | Last 10 messages held in Streamlit session state |
 | Configuration | python-dotenv |
 
 
@@ -93,13 +89,14 @@ Edit .env so it reads:
 GROQ_API_KEY=gsk_your_actual_key_here
 ```
 
-The application also accepts the key typed directly into the sidebar at runtime,
-which is convenient when deploying on shared infrastructure where you cannot manage
-a .env file.
+For Streamlit Community Cloud, configure GROQ_API_KEY through the app's
+Secrets settings; do not commit your key to the repository. The app reads it
+from the environment at startup.
 
 | Variable | Required | Description |
 |---|---|---|
 | GROQ_API_KEY | Yes | API key from console.groq.com. Keys are prefixed with gsk_. |
+| GROQ_MODEL | No | Groq model ID; defaults to openai/gpt-oss-20b. |
 
 To obtain a key: create an account at https://console.groq.com, navigate to API
 Keys, and click "Create API Key". Copy the key immediately as it is shown only once.
@@ -114,9 +111,8 @@ streamlit run app.py
 Streamlit opens a browser tab at http://localhost:8501. If the tab does not open
 automatically, copy the URL from the terminal output.
 
-Once the page loads, enter your Groq API key in the sidebar (or set GROQ_API_KEY in
-.env so it is pre-filled), choose a persona, then type in the chat input at the
-bottom of the screen.
+Set GROQ_API_KEY in your environment or local .env file before launching.
+Choose a persona, then type in the chat input at the bottom of the screen.
 
 
 ## Running the demo script
@@ -135,7 +131,7 @@ Example output (actual model responses will vary):
 ```
 ========================================================================
   AI Chat Assistant -- Demo
-  Model: Groq Llama3-8b-8192   |   Memory window: 10 turns
+  Model: Groq openai/gpt-oss-20b | Recent context: 10 messages
 ========================================================================
 
 Persona: General Assistant
@@ -229,10 +225,11 @@ to user-readable messages:
 - HTTP 401 or invalid_api_key: prompts the user to check their key.
 - HTTP 429 or rate_limit: advises waiting before retrying.
 - HTTP 503 or unavailable: reports a temporary service outage.
-- All other errors: displays the raw error message for diagnosis.
+- Unsupported model IDs: suggests selecting a currently supported Groq model.
+- Other errors: shows a brief message without exposing raw API details.
 
-These messages are shown inline in the chat so the session is not lost
-and the user can retry after correcting the problem.
+Errors are shown inline but are not saved as assistant responses, so the user
+can retry without polluting the conversation memory.
 
 
 ## License
