@@ -4,9 +4,7 @@ A conversational AI assistant built with Streamlit and LangChain, powered by Gro
 hosted inference API. The application provides a polished chat interface with
 persistent conversation memory, five purpose-built personas, and structured error
 handling. The same LangChain pipeline is also exposed as a standalone command-line
-demo that can be used to verify the setup without a browser.
-
-Live URL : https://ai-chat-assistant-elyt2rzcwcddgypk6zfslh.streamlit.app
+demo that can be used to verify the setup without a browser. **[Launch Live Demo](https://ai-chat-assistant-elyt2rzcwcddgypk6zfslh.streamlit.app)**
 
 ## What it does
 
