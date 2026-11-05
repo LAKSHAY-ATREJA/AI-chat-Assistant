@@ -1,5 +1,7 @@
 # AI Chat Assistant
 
+**[▶ Live Demo — Open App](https://ai-chat-assistant-elyt2rzcwcddgypk6zfslh.streamlit.app)**
+
 A conversational AI assistant built with Streamlit and LangChain, powered by Groq's
 hosted inference API. The application provides a polished chat interface with
 persistent conversation memory, five purpose-built personas, and structured error
